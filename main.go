@@ -5,7 +5,21 @@ import (
 	"math"
 	"sort"
 	"time"
+	"runtime"
 )
+
+
+type PerformanceMetrics struct {
+	ExecutionTime time.Duration
+	MemoryUsage   uint64
+	NumCoins      int
+}
+
+func getMemoryUsage() uint64 {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	return m.Alloc
+}
 
 const (
 	MAX_RECURSION_DEPTH = 1000
@@ -179,44 +193,48 @@ func min(a, b int) int {
 func TestImplementations(coins []int, amount int) {
 	fmt.Printf("\nTestando para amount=%d e coins=%v\n", amount, coins)
 
-	if amount < 0 {
-		fmt.Println("Valor inválido: amount deve ser positivo")
-		return
-	}
-	if len(coins) == 0 {
-		fmt.Println("Valor inválido: array de moedas está vazio")
-		return
-	}
-
 	// Teste Recursivo
+	runtime.GC() // Força garbage collection antes do teste
+	startMem := getMemoryUsage()
 	start := time.Now()
 	result1 := coinChangeRecursive(coins, amount)
 	duration1 := time.Since(start)
-	printResult("Recursivo", result1, duration1)
+	memUsed1 := getMemoryUsage() - startMem
+	printDetailedResult("Recursivo", result1, duration1, memUsed1)
 
 	// Teste Memorizado
+	runtime.GC()
+	startMem = getMemoryUsage()
 	start = time.Now()
 	result2 := coinChangeMemoized(coins, amount)
 	duration2 := time.Since(start)
-	printResult("Memorizado", result2, duration2)
+	memUsed2 := getMemoryUsage() - startMem
+	printDetailedResult("Memorizado", result2, duration2, memUsed2)
 
 	// Teste Iterativo
+	runtime.GC()
+	startMem = getMemoryUsage()
 	start = time.Now()
 	result3 := coinChangeIterative(coins, amount)
 	duration3 := time.Since(start)
-	printResult("Iterativo", result3, duration3)
+	memUsed3 := getMemoryUsage() - startMem
+	printDetailedResult("Iterativo", result3, duration3, memUsed3)
 }
 
-func printResult(method string, result int, duration time.Duration) {
+func printDetailedResult(method string, result int, duration time.Duration, memUsed uint64) {
 	switch result {
 	case -3:
-		fmt.Printf("%s: Timeout - execução muito longa (tempo: %v)\n", method, duration)
+			fmt.Printf("%s: Timeout - execução muito longa (tempo: %v, memória: %d bytes)\n", 
+					method, duration, memUsed)
 	case -2:
-		fmt.Printf("%s: Profundidade máxima de recursão atingida (tempo: %v)\n", method, duration)
+			fmt.Printf("%s: Profundidade máxima de recursão atingida (tempo: %v, memória: %d bytes)\n", 
+					method, duration, memUsed)
 	case -1:
-		fmt.Printf("%s: Impossível fazer o troco (tempo: %v)\n", method, duration)
+			fmt.Printf("%s: Impossível fazer o troco (tempo: %v, memória: %d bytes)\n", 
+					method, duration, memUsed)
 	default:
-		fmt.Printf("%s: %d moedas (tempo: %v)\n", method, result, duration)
+			fmt.Printf("%s: %d moedas (tempo: %v, memória: %d bytes)\n", 
+					method, result, duration, memUsed)
 	}
 }
 
